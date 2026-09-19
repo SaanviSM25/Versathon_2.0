@@ -78,3 +78,23 @@ select {
   width: 90%;
   max-width: 500px;
 }
+.star-rating {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 12px auto 6px;
+}
+
+.rating-star {
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: block;
+}
+
+.rating-number {
+  text-align: center;
+  font-weight: bold;
+  margin: 4px 0 15px;
+}
