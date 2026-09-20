@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -46,7 +46,7 @@ app.get("/api/matches/:userId", async (req, res) => {
       return res.json([]);
     }
 
-    const learningSkillIds = learningSkills.map(
+    const learningskillIds = learningSkills.map(
       (item) => item.skill_id
     );
 
@@ -54,7 +54,7 @@ app.get("/api/matches/:userId", async (req, res) => {
       await supabase
         .from("user_skills")
         .select("user_id, skill_id")
-        .in("skill_id", learningSkillIds)
+        .in("skill_id", learningskillIds)
         .eq("type", "teach")
         .neq("user_id", userId);
 
@@ -94,7 +94,7 @@ app.get("/api/matches/:userId", async (req, res) => {
 
     const matches = profiles.map((profile) => {
 
-      const matchingSkillIds = teachingSkills
+      const matchingskillIds = teachingSkills
         .filter(
           (item) => item.user_id === profile.id
         )
@@ -102,7 +102,7 @@ app.get("/api/matches/:userId", async (req, res) => {
           (item) => item.skill_id
         );
 
-      const matchingSkills = matchingSkillIds
+      const matchingSkills = matchingskillIds
         .map((skillId) => {
 
           const skill = skills.find(
@@ -114,8 +114,8 @@ app.get("/api/matches/:userId", async (req, res) => {
         .filter(Boolean);
 
       const matchScore = Math.round(
-        (matchingSkillIds.length /
-          learningSkillIds.length) *
+        (matchingskillIds.length /
+          learningskillIds.length) *
           100
       );
 
@@ -126,7 +126,7 @@ app.get("/api/matches/:userId", async (req, res) => {
         year: profile.year,
         bio: profile.bio,
         matchingSkills: matchingSkills,
-        matchingSkillIds: matchingSkillIds,
+        matchingskillIds: matchingskillIds,
         matchScore: matchScore,
       };
     });
@@ -272,7 +272,7 @@ app.patch("/api/requests/:requestId", async (req, res) => {
     const { error } = await supabase
       .from("Request")
       .update({
-        Status: status,
+        status: status,
       })
       .eq("id", requestId);
 
@@ -297,63 +297,85 @@ app.patch("/api/requests/:requestId", async (req, res) => {
 // M4: CREATE SESSION
 // =====================================================
 
-// ==================== CREATE SESSION ====================
+app.post("/api/sessions", async (req, res) => {
+  try {
+
+    const {
+      requestId,
+      learnerId,
+      mentorId,
+      skillId,
+      date,
+      time,
+    } = req.body;
+
+    if (
+      !requestId ||
+      !learnerId ||
+      !mentorId ||
+      !skillId ||
+      !date ||
+      !time
+    ) {
+      return res.status(400).json({
+        message: "Missing required session details.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("Session")
+      .insert([
+        {
+          requestId: requestId,
+          learnerId: learnerId,
+          mentorId: mentorId,
+          skillId: skillId,
+          date: date,
+          time: time,
+          status: "scheduled",
+        },
+      ])
+      .select();
+
+    if (error) throw error;
+
+    res.status(201).json({
+      message: "Session scheduled successfully.",
+      session: data?.[0] || null,
+    });
+
+  } catch (error) {
+
+    console.error("Create session error:", error);
+
+    res.status(500).json({
+      message: "Failed to create session",
+      error: error.message,
+    });
+  }
+});
+
+// =====================================================
+// M4: GET SESSIONS
+// =====================================================
 
 app.get("/api/sessions/:userId", async (req, res) => {
   try {
+
     const userId = req.params.userId;
 
     const { data, error } = await supabase
       .from("Session")
       .select("*")
+      .or(`learnerId.eq.${userId},mentorId.eq.${userId}`)
       .order("date", { ascending: true });
 
     if (error) throw error;
 
-    // Filter sessions for this user in JavaScript
-    const userSessions = (data || []).filter(
-      (session) =>
-        session.learnerId === userId ||
-        session.mentorId === userId ||
-        session.learnerid === userId ||
-        session.mentorid === userId
-    );
-
-    res.json(userSessions);
-
-  } catch (error) {
-    console.error("Fetch sessions error:", error);
-
-    res.status(500).json({
-      message: "Failed to fetch sessions",
-      error: error.message,
-    });
-  }
-});
-
-// ==================== GET USER SESSIONS ====================
-
-app.get("/api/sessions/:userId", async (req, res) => {
-  try {
-    const userId = req.params.userId;
-
-    const { data, error } = await supabase
-      .from("Session")
-      .select("*")
-      .or(`learnerid.eq.${userId},mentorid.eq.${userId}`)
-      .order("date", { ascending: true });
-
-    if (error) {
-      console.error("Supabase error:", error);
-      return res.status(500).json({
-        message: "Failed to fetch sessions",
-        error: error.message,
-      });
-    }
-
     res.json(data || []);
 
   } catch (error) {
+
     console.error("Fetch sessions error:", error);
 
     res.status(500).json({
@@ -362,10 +384,6 @@ app.get("/api/sessions/:userId", async (req, res) => {
     });
   }
 });
-
-// =====================================================
-// M4: UPDATE SESSION STATUS
-// =====================================================
 
 // =====================================================
 // M4: UPDATE SESSION STATUS
@@ -387,7 +405,7 @@ app.patch("/api/sessions/:sessionId", async (req, res) => {
     const { error } = await supabase
       .from("Session")
       .update({
-        Status: status,
+        status: status,
       })
       .eq("id", sessionId);
 
@@ -419,4 +437,3 @@ app.listen(PORT, () => {
   );
 
 });
-

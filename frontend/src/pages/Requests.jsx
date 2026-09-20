@@ -1,131 +1,270 @@
-import { useState } from 'react'
+import { useEffect, useState } from "react";
+
+// =====================================================
+// CURRENT USER
+// =====================================================
+
+const CURRENT_USER_ID = "8853da02-7b17-4e6a-a1c2-8c229c9ef545";
+
+const API_URL = "http://localhost:5000";
 
 function Requests() {
-  const [requests, setRequests] = useState([
-    {
-      id: 'R001',
-      learnerName: 'Rahul',
-      mentorName: 'You',
-      skillName: 'React',
-      message: 'I would like to learn React from you.',
-      status: 'pending',
-      date: '2026-09-19',
-      direction: 'received',
-    },
-  ])
+  const [requests, setRequests] = useState([]);
+  const [sessions, setSessions] = useState([]);
 
-  const [sessions, setSessions] = useState([])
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
-  const [skillName, setSkillName] = useState('')
-  const [message, setMessage] = useState('')
+  const [skillName, setSkillName] = useState("");
+  const [requestMessage, setRequestMessage] = useState("");
 
-  const [sessionDate, setSessionDate] = useState('')
-  const [sessionTime, setSessionTime] = useState('')
+  const [sessionDate, setSessionDate] = useState("");
+  const [sessionTime, setSessionTime] = useState("");
 
-  const [rating, setRating] = useState(0)
-  const [comment, setComment] = useState('')
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [rating, setRating] = useState("");
+  const [comment, setComment] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  const updateStatus = (id, newStatus) => {
-    setRequests((currentRequests) =>
-      currentRequests.map((request) =>
-        request.id === id
-          ? { ...request, status: newStatus }
-          : request
-      )
-    )
-  }
+  // =====================================================
+  // LOAD REQUESTS + SESSIONS
+  // =====================================================
 
-  const sendRequest = () => {
-    if (skillName === '' || message === '') {
-      return
+  useEffect(() => {
+    loadRequests();
+    loadSessions();
+  }, []);
+
+  const loadRequests = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/requests/${CURRENT_USER_ID}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load requests");
+      }
+
+      const data = await response.json();
+
+      setRequests(data || []);
+    } catch (error) {
+      console.error("Load requests error:", error);
+      setMessage("Could not load requests.");
+    }
+  };
+
+  const loadSessions = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/sessions/${CURRENT_USER_ID}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load sessions");
+      }
+
+      const data = await response.json();
+
+      setSessions(data || []);
+    } catch (error) {
+      console.error("Load sessions error:", error);
+      setMessage("Could not load sessions.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =====================================================
+  // SEND REQUEST
+  // =====================================================
+
+  const sendRequest = async () => {
+    if (skillName === "" || requestMessage === "") {
+      setMessage("Please enter the skill and message.");
+      return;
     }
 
-    const newRequest = {
-      id: `R00${requests.length + 1}`,
-      learnerName: 'You',
-      mentorName: 'A mentor',
-      skillName: skillName,
-      message: message,
-      status: 'pending',
-      date: '2026-09-19',
-      direction: 'sent',
+    setMessage(
+      "Send requests from the matching page so the mentor ID is included."
+    );
+  };
+
+  // =====================================================
+  // ACCEPT / REJECT REQUEST
+  // =====================================================
+
+  const updateStatus = async (id, newStatus) => {
+    try {
+      setMessage("");
+
+      const response = await fetch(
+        `${API_URL}/api/requests/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: newStatus,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update request");
+      }
+
+      setRequests((currentRequests) =>
+        currentRequests.map((request) =>
+          request.id === id
+            ? { ...request, status: newStatus }
+            : request
+        )
+      );
+
+      setMessage(`Request ${newStatus} successfully.`);
+    } catch (error) {
+      console.error("Update request error:", error);
+      setMessage("Could not update request.");
+    }
+  };
+
+  // =====================================================
+  // CREATE SESSION
+  // =====================================================
+
+  const scheduleSession = async (request) => {
+    if (sessionDate === "" || sessionTime === "") {
+      setMessage("Please select a date and time.");
+      return;
     }
 
-    setRequests((currentRequests) => [
-      ...currentRequests,
-      newRequest,
-    ])
+    try {
+      setMessage("");
 
-    setSkillName('')
-    setMessage('')
-  }
+      const response = await fetch(
+        `${API_URL}/api/sessions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            requestId: request.id,
+            learnerId: request.learnerId,
+            mentorId: request.mentorId,
+            skillId: request.skillId,
+            date: sessionDate,
+            time: sessionTime,
+          }),
+        }
+      );
 
-  const scheduleSession = (request) => {
-    if (sessionDate === '' || sessionTime === '') {
-      return
+      if (!response.ok) {
+        throw new Error("Failed to schedule session");
+      }
+
+      const result = await response.json();
+
+      if (result.session) {
+        setSessions((currentSessions) => [
+          ...currentSessions,
+          result.session,
+        ]);
+      } else {
+        await loadSessions();
+      }
+
+      setSessionDate("");
+      setSessionTime("");
+
+      setMessage("Session scheduled successfully.");
+    } catch (error) {
+      console.error("Schedule session error:", error);
+      setMessage("Could not schedule session.");
     }
+  };
 
-    const newSession = {
-      id: `SS00${sessions.length + 1}`,
-      requestId: request.id,
-      skillName: request.skillName,
-      learnerName: request.learnerName,
-      mentorName: request.mentorName,
-      date: sessionDate,
-      time: sessionTime,
-      status: 'scheduled',
+  // =====================================================
+  // COMPLETE SESSION
+  // =====================================================
+
+  const completeSession = async (sessionId) => {
+    try {
+      setMessage("");
+
+      const response = await fetch(
+        `${API_URL}/api/sessions/${sessionId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: "completed",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to complete session");
+      }
+
+      setSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          session.id === sessionId
+            ? { ...session, status: "completed" }
+            : session
+        )
+      );
+
+      setMessage("Session marked as completed.");
+    } catch (error) {
+      console.error("Complete session error:", error);
+      setMessage("Could not complete session.");
     }
+  };
 
-    setSessions((currentSessions) => [
-      ...currentSessions,
-      newSession,
-    ])
-
-    setSessionDate('')
-    setSessionTime('')
-  }
-
-  const completeSession = (sessionId) => {
-    setSessions((currentSessions) =>
-      currentSessions.map((session) =>
-        session.id === sessionId
-          ? { ...session, status: 'completed' }
-          : session
-      )
-    )
-  }
+  // =====================================================
+  // FEEDBACK
+  // =====================================================
 
   const submitFeedback = () => {
-    setFeedbackSubmitted(true)
-  }
-
-  const handleStarClick = (event, star) => {
-    const rect = event.currentTarget.getBoundingClientRect()
-    const clickPosition = event.clientX - rect.left
-
-    if (clickPosition < rect.width / 2) {
-      setRating(star - 0.5)
-    } else {
-      setRating(star)
-    }
-  }
-
-  const getStarColor = (star) => {
-    if (rating >= star) {
-      return '#f5b301'
+    if (rating === "") {
+      setMessage("Please select a rating.");
+      return;
     }
 
-    if (rating === star - 0.5) {
-      return 'url(#halfStar)'
-    }
+    setFeedbackSubmitted(true);
+    setMessage("Feedback submitted successfully.");
+  };
 
-    return '#d1d5db'
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (loading) {
+    return (
+      <div>
+        <h2>Campus Skill Exchange</h2>
+        <p>Loading requests and sessions...</p>
+      </div>
+    );
   }
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
     <div>
       <h2>Campus Skill Exchange</h2>
+
+      {message && (
+        <p>
+          <strong>{message}</strong>
+        </p>
+      )}
 
       {/* SEND REQUEST */}
 
@@ -155,8 +294,8 @@ function Requests() {
         <br />
 
         <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          value={requestMessage}
+          onChange={(e) => setRequestMessage(e.target.value)}
           placeholder="Write your request message"
           rows="4"
         />
@@ -173,86 +312,41 @@ function Requests() {
       <h2>My Sent Requests</h2>
 
       {requests
-        .filter((request) => request.direction === 'sent')
+        .filter(
+          (request) => request.learnerId === CURRENT_USER_ID
+        )
         .map((request) => (
           <div className="request-card" key={request.id}>
-            <h3>{request.skillName}</h3>
+            <h3>Request #{request.id}</h3>
 
             <p>
-              <strong>To:</strong> {request.mentorName}
+              <strong>Mentor ID:</strong>{" "}
+              {request.mentorId}
             </p>
 
-            <p>{request.message}</p>
+            <p>
+              <strong>Skill ID:</strong>{" "}
+              {request.skillId}
+            </p>
 
             <p>
-              <strong>Status:</strong>{' '}
+              <strong>Message:</strong>{" "}
+              {request.message}
+            </p>
+
+            <p>
+              <strong>Status:</strong>{" "}
               <span className="status">
                 {request.status}
               </span>
             </p>
 
             <p>
-              <strong>Requested on:</strong>{' '}
-              {request.date}
-            </p>
-          </div>
-        ))}
-
-      {/* RECEIVED REQUESTS */}
-
-      <h2>Received Requests</h2>
-
-      {requests
-        .filter((request) => request.direction === 'received')
-        .map((request) => (
-          <div className="request-card" key={request.id}>
-            <h3>{request.skillName}</h3>
-
-            <p>
-              <strong>From:</strong> {request.learnerName}
+              <strong>Requested on:</strong>{" "}
+              {request.createdAt || "N/A"}
             </p>
 
-            <p>{request.message}</p>
-
-            <p>
-              <strong>Status:</strong>{' '}
-              <span className="status">
-                {request.status}
-              </span>
-            </p>
-
-            <p>
-              <strong>Requested on:</strong>{' '}
-              {request.date}
-            </p>
-
-            {request.status === 'pending' && (
-              <div>
-                <button
-                  onClick={() =>
-                    updateStatus(
-                      request.id,
-                      'accepted'
-                    )
-                  }
-                >
-                  Accept
-                </button>
-
-                <button
-                  onClick={() =>
-                    updateStatus(
-                      request.id,
-                      'rejected'
-                    )
-                  }
-                >
-                  Reject
-                </button>
-              </div>
-            )}
-
-            {request.status === 'accepted' && (
+            {request.status === "accepted" && (
               <div className="session">
                 <h3>Schedule Session</h3>
 
@@ -301,33 +395,171 @@ function Requests() {
           </div>
         ))}
 
+      {requests.filter(
+        (request) => request.learnerId === CURRENT_USER_ID
+      ).length === 0 && (
+        <p>No sent requests yet.</p>
+      )}
+
+      {/* RECEIVED REQUESTS */}
+
+      <h2>Received Requests</h2>
+
+      {requests
+        .filter(
+          (request) => request.mentorId === CURRENT_USER_ID
+        )
+        .map((request) => (
+          <div className="request-card" key={request.id}>
+            <h3>Request #{request.id}</h3>
+
+            <p>
+              <strong>From learner:</strong>{" "}
+              {request.learnerId}
+            </p>
+
+            <p>
+              <strong>Skill ID:</strong>{" "}
+              {request.skillId}
+            </p>
+
+            <p>
+              <strong>Message:</strong>{" "}
+              {request.message}
+            </p>
+
+            <p>
+              <strong>Status:</strong>{" "}
+              <span className="status">
+                {request.status}
+              </span>
+            </p>
+
+            <p>
+              <strong>Requested on:</strong>{" "}
+              {request.createdAt || "N/A"}
+            </p>
+
+            {request.status === "pending" && (
+              <div>
+                <button
+                  onClick={() =>
+                    updateStatus(
+                      request.id,
+                      "accepted"
+                    )
+                  }
+                >
+                  Accept
+                </button>
+
+                <button
+                  onClick={() =>
+                    updateStatus(
+                      request.id,
+                      "rejected"
+                    )
+                  }
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+
+            {request.status === "accepted" && (
+              <div className="session">
+                <h3>Schedule Session</h3>
+
+                <label>
+                  <strong>Date:</strong>
+                </label>
+
+                <br />
+
+                <input
+                  type="date"
+                  value={sessionDate}
+                  onChange={(e) =>
+                    setSessionDate(e.target.value)
+                  }
+                />
+
+                <br />
+                <br />
+
+                <label>
+                  <strong>Time:</strong>
+                </label>
+
+                <br />
+
+                <input
+                  type="time"
+                  value={sessionTime}
+                  onChange={(e) =>
+                    setSessionTime(e.target.value)
+                  }
+                />
+
+                <br />
+
+                <button
+                  onClick={() =>
+                    scheduleSession(request)
+                  }
+                >
+                  Schedule Session
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
+      {requests.filter(
+        (request) => request.mentorId === CURRENT_USER_ID
+      ).length === 0 && (
+        <p>No received requests yet.</p>
+      )}
+
       {/* UPCOMING SESSIONS */}
 
       <h2>Upcoming Sessions</h2>
 
       {sessions
         .filter(
-          (session) => session.status === 'scheduled'
+          (session) => session.status === "scheduled"
         )
         .map((session) => (
           <div className="request-card" key={session.id}>
-            <h3>{session.skillName}</h3>
+            <h3>Session #{session.id}</h3>
 
             <p>
-              <strong>Student:</strong>{' '}
-              {session.learnerName}
+              <strong>Learner:</strong>{" "}
+              {session.learnerId}
             </p>
 
             <p>
-              <strong>Date:</strong> {session.date}
+              <strong>Mentor:</strong>{" "}
+              {session.mentorId}
             </p>
 
             <p>
-              <strong>Time:</strong> {session.time}
+              <strong>Skill ID:</strong>{" "}
+              {session.skillId}
             </p>
 
             <p>
-              <strong>Status:</strong>{' '}
+              <strong>Date:</strong>{" "}
+              {session.date}
+            </p>
+
+            <p>
+              <strong>Time:</strong>{" "}
+              {session.time}
+            </p>
+
+            <p>
+              <strong>Status:</strong>{" "}
               <span className="status">
                 Scheduled
               </span>
@@ -343,10 +575,16 @@ function Requests() {
           </div>
         ))}
 
+      {sessions.filter(
+        (session) => session.status === "scheduled"
+      ).length === 0 && (
+        <p>No upcoming sessions.</p>
+      )}
+
       {/* FEEDBACK */}
 
       {sessions.some(
-        (session) => session.status === 'completed'
+        (session) => session.status === "completed"
       ) &&
         !feedbackSubmitted && (
           <div className="request-card">
@@ -356,52 +594,41 @@ function Requests() {
               <strong>Rating:</strong>
             </label>
 
-            <div className="star-rating">
-              <svg
-                width="0"
-                height="0"
-                style={{ position: 'absolute' }}
-              >
-                <defs>
-                  <linearGradient
-                    id="halfStar"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="0%"
-                  >
-                    <stop
-                      offset="50%"
-                      stopColor="#f5b301"
-                    />
-                    <stop
-                      offset="50%"
-                      stopColor="#d1d5db"
-                    />
-                  </linearGradient>
-                </defs>
-              </svg>
+            <br />
 
-              {[1, 2, 3, 4, 5].map((star) => (
-                <svg
-                  key={star}
-                  className="rating-star"
-                  viewBox="0 0 24 24"
-                  onClick={(event) =>
-                    handleStarClick(event, star)
-                  }
-                >
-                  <polygon
-                    points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9"
-                    fill={getStarColor(star)}
-                  />
-                </svg>
-              ))}
-            </div>
+            <select
+              value={rating}
+              onChange={(e) =>
+                setRating(e.target.value)
+              }
+            >
+              <option value="">
+                Select a rating
+              </option>
 
-            <p className="rating-number">
-              {rating}/5
-            </p>
+              <option value="5">
+                5 - Excellent
+              </option>
+
+              <option value="4">
+                4 - Very Good
+              </option>
+
+              <option value="3">
+                3 - Good
+              </option>
+
+              <option value="2">
+                2 - Average
+              </option>
+
+              <option value="1">
+                1 - Poor
+              </option>
+            </select>
+
+            <br />
+            <br />
 
             <label>
               <strong>Comment:</strong>
@@ -426,21 +653,25 @@ function Requests() {
           </div>
         )}
 
+      {/* FEEDBACK SUBMITTED */}
+
       {feedbackSubmitted && (
         <div className="request-card">
           <h2>Feedback Submitted</h2>
 
           <p>
-            <strong>Rating:</strong> {rating}/5
+            <strong>Rating:</strong>{" "}
+            {rating} / 5
           </p>
 
           <p>
-            <strong>Comment:</strong> {comment}
+            <strong>Comment:</strong>{" "}
+            {comment}
           </p>
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default Requests
+export default Requests;

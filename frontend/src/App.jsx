@@ -71,4 +71,4 @@ const buttonStyle = {
   fontWeight: "600",
 };
 
-export default Sessions;
+export default App;
