@@ -306,6 +306,37 @@ app.post("/api/requests", async (req, res) => {
 });
 
 // =====================================================
+// M4: GET REQUESTS
+// =====================================================
+
+app.get("/api/requests/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    const { data, error } = await supabase
+      .from("Request")
+      .select("*")
+      .or(`learnerId.eq.${userId},mentorId.eq.${userId}`)
+      .order("createdAt", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    res.json(data || []);
+
+  } catch (error) {
+
+    console.error("Fetch requests error:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch requests",
+      error: error.message,
+    });
+  }
+});
+
+// =====================================================
 // START SERVER
 // =====================================================
 
