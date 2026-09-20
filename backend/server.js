@@ -46,7 +46,7 @@ app.get("/api/matches/:userId", async (req, res) => {
       return res.json([]);
     }
 
-    const learningSkillIds = learningSkills.map(
+    const learningskillIds = learningSkills.map(
       (item) => item.skill_id
     );
 
@@ -54,7 +54,7 @@ app.get("/api/matches/:userId", async (req, res) => {
       await supabase
         .from("user_skills")
         .select("user_id, skill_id")
-        .in("skill_id", learningSkillIds)
+        .in("skill_id", learningskillIds)
         .eq("type", "teach")
         .neq("user_id", userId);
 
@@ -94,7 +94,7 @@ app.get("/api/matches/:userId", async (req, res) => {
 
     const matches = profiles.map((profile) => {
 
-      const matchingSkillIds = teachingSkills
+      const matchingskillIds = teachingSkills
         .filter(
           (item) => item.user_id === profile.id
         )
@@ -102,7 +102,7 @@ app.get("/api/matches/:userId", async (req, res) => {
           (item) => item.skill_id
         );
 
-      const matchingSkills = matchingSkillIds
+      const matchingSkills = matchingskillIds
         .map((skillId) => {
 
           const skill = skills.find(
@@ -114,8 +114,8 @@ app.get("/api/matches/:userId", async (req, res) => {
         .filter(Boolean);
 
       const matchScore = Math.round(
-        (matchingSkillIds.length /
-          learningSkillIds.length) *
+        (matchingskillIds.length /
+          learningskillIds.length) *
           100
       );
 
@@ -126,7 +126,7 @@ app.get("/api/matches/:userId", async (req, res) => {
         year: profile.year,
         bio: profile.bio,
         matchingSkills: matchingSkills,
-        matchingSkillIds: matchingSkillIds,
+        matchingskillIds: matchingskillIds,
         matchScore: matchScore,
       };
     });
@@ -302,18 +302,18 @@ app.post("/api/sessions", async (req, res) => {
 
     const {
       requestId,
-      learnerid,
-      mentorid,
-      skillid,
+      learnerId,
+      mentorId,
+      skillId,
       date,
       time,
     } = req.body;
 
     if (
       !requestId ||
-      !learnerid ||
-      !mentorid ||
-      !skillid ||
+      !learnerId ||
+      !mentorId ||
+      !skillId ||
       !date ||
       !time
     ) {
@@ -327,9 +327,9 @@ app.post("/api/sessions", async (req, res) => {
       .insert([
         {
           requestId: requestId,
-          learnerid: learnerid,
-          mentorid: mentorid,
-          skillid: skillid,
+          learnerId: learnerId,
+          mentorId: mentorId,
+          skillId: skillId,
           date: date,
           time: time,
           status: "scheduled",
@@ -367,7 +367,7 @@ app.get("/api/sessions/:userId", async (req, res) => {
     const { data, error } = await supabase
       .from("Session")
       .select("*")
-      .or(`learnerid.eq.${userId},mentorid.eq.${userId}`)
+      .or(`learnerId.eq.${userId},mentorId.eq.${userId}`)
       .order("date", { ascending: true });
 
     if (error) throw error;
