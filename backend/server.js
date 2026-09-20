@@ -337,6 +337,47 @@ app.get("/api/requests/:userId", async (req, res) => {
 });
 
 // =====================================================
+// M4: ACCEPT / REJECT REQUEST
+// =====================================================
+
+app.patch("/api/requests/:requestId", async (req, res) => {
+  try {
+    const requestId = req.params.requestId;
+    const { status } = req.body;
+
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({
+        message: "Status must be accepted or rejected.",
+      });
+    }
+
+    const { error } = await supabase
+      .from("Request")
+      .update({
+        status: status,
+      })
+      .eq("id", requestId);
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({
+      message: `Request ${status} successfully.`,
+    });
+
+  } catch (error) {
+
+    console.error("Update request error:", error);
+
+    res.status(500).json({
+      message: "Failed to update request",
+      error: error.message,
+    });
+  }
+});
+
+// =====================================================
 // START SERVER
 // =====================================================
 
