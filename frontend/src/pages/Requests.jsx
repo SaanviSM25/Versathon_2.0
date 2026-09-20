@@ -1,204 +1,446 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { useState } from 'react'
 
 function Requests() {
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [requests, setRequests] = useState([
+    {
+      id: 'R001',
+      learnerName: 'Rahul',
+      mentorName: 'You',
+      skillName: 'React',
+      message: 'I would like to learn React from you.',
+      status: 'pending',
+      date: '2026-09-19',
+      direction: 'received',
+    },
+  ])
 
-  // Temporary current user
-  // Later this will come from Supabase Auth
-  const currentUserId =
-    "8853da02-7b17-4e6a-a1c2-8c229c9ef545";
+  const [sessions, setSessions] = useState([])
 
-  // ==============================
-  // GET PENDING REQUESTS
-  // ==============================
+  const [skillName, setSkillName] = useState('')
+  const [message, setMessage] = useState('')
 
-  const fetchRequests = async () => {
-    setLoading(true);
-    setMessage("");
+  const [sessionDate, setSessionDate] = useState('')
+  const [sessionTime, setSessionTime] = useState('')
 
-    const { data, error } = await supabase
-      .from("Request")
-      .select("*")
-      .eq("mentorId", currentUserId)
-      .eq("status", "pending")
-      .order("createdAt", {
-        ascending: false,
-      });
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
 
-    if (error) {
-      console.error("Error fetching requests:", error);
-      setMessage("Could not load requests.");
+  const updateStatus = (id, newStatus) => {
+    setRequests((currentRequests) =>
+      currentRequests.map((request) =>
+        request.id === id
+          ? { ...request, status: newStatus }
+          : request
+      )
+    )
+  }
+
+  const sendRequest = () => {
+    if (skillName === '' || message === '') {
+      return
+    }
+
+    const newRequest = {
+      id: `R00${requests.length + 1}`,
+      learnerName: 'You',
+      mentorName: 'A mentor',
+      skillName: skillName,
+      message: message,
+      status: 'pending',
+      date: '2026-09-19',
+      direction: 'sent',
+    }
+
+    setRequests((currentRequests) => [
+      ...currentRequests,
+      newRequest,
+    ])
+
+    setSkillName('')
+    setMessage('')
+  }
+
+  const scheduleSession = (request) => {
+    if (sessionDate === '' || sessionTime === '') {
+      return
+    }
+
+    const newSession = {
+      id: `SS00${sessions.length + 1}`,
+      requestId: request.id,
+      skillName: request.skillName,
+      learnerName: request.learnerName,
+      mentorName: request.mentorName,
+      date: sessionDate,
+      time: sessionTime,
+      status: 'scheduled',
+    }
+
+    setSessions((currentSessions) => [
+      ...currentSessions,
+      newSession,
+    ])
+
+    setSessionDate('')
+    setSessionTime('')
+  }
+
+  const completeSession = (sessionId) => {
+    setSessions((currentSessions) =>
+      currentSessions.map((session) =>
+        session.id === sessionId
+          ? { ...session, status: 'completed' }
+          : session
+      )
+    )
+  }
+
+  const submitFeedback = () => {
+    setFeedbackSubmitted(true)
+  }
+
+  const handleStarClick = (event, star) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const clickPosition = event.clientX - rect.left
+
+    if (clickPosition < rect.width / 2) {
+      setRating(star - 0.5)
     } else {
-      setRequests(data || []);
+      setRating(star)
+    }
+  }
+
+  const getStarColor = (star) => {
+    if (rating >= star) {
+      return '#f5b301'
     }
 
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchRequests();
-  }, []);
-
-  // ==============================
-  // ACCEPT REQUEST
-  // ==============================
-
-  const acceptRequest = async (requestId) => {
-    setMessage("");
-
-    const { error } = await supabase
-      .from("Request")
-      .update({
-        status: "accepted",
-      })
-      .eq("id", requestId);
-
-    if (error) {
-      console.error("Accept error:", error);
-      setMessage("Could not accept request.");
-      return;
+    if (rating === star - 0.5) {
+      return 'url(#halfStar)'
     }
 
-    setMessage("Request accepted successfully.");
-
-    // Refresh requests
-    fetchRequests();
-  };
-
-  // ==============================
-  // REJECT REQUEST
-  // ==============================
-
-  const rejectRequest = async (requestId) => {
-    setMessage("");
-
-    const { error } = await supabase
-      .from("Request")
-      .update({
-        status: "rejected",
-      })
-      .eq("id", requestId);
-
-    if (error) {
-      console.error("Reject error:", error);
-      setMessage("Could not reject request.");
-      return;
-    }
-
-    setMessage("Request rejected.");
-
-    // Refresh requests
-    fetchRequests();
-  };
+    return '#d1d5db'
+  }
 
   return (
-    <div
-      style={{
-        maxWidth: "900px",
-        margin: "40px auto",
-        padding: "20px",
-      }}
-    >
-      <h1>Requests</h1>
+    <div>
+      <h2>Campus Skill Exchange</h2>
 
-      <p>
-        Manage requests from students who want to
-        learn from you.
-      </p>
+      {/* SEND REQUEST */}
 
-      {message && (
-        <p
-          style={{
-            padding: "10px",
-            borderRadius: "6px",
-            backgroundColor: "#e5e7eb",
-          }}
-        >
-          {message}
-        </p>
-      )}
+      <div className="request-card">
+        <h3>Send Learning Request</h3>
 
-      {loading && (
-        <p>Loading requests...</p>
-      )}
+        <label>
+          <strong>Skill:</strong>
+        </label>
 
-      {!loading && requests.length === 0 && (
-        <p>
-          No pending requests.
-        </p>
-      )}
+        <br />
 
-      {!loading &&
-        requests.map((request) => (
-          <div
-            key={request.id}
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: "10px",
-              padding: "20px",
-              marginBottom: "15px",
-            }}
-          >
-            <h3>
-              Skill Request
-            </h3>
+        <input
+          type="text"
+          value={skillName}
+          onChange={(e) => setSkillName(e.target.value)}
+          placeholder="Enter skill you want to learn"
+        />
+
+        <br />
+        <br />
+
+        <label>
+          <strong>Message:</strong>
+        </label>
+
+        <br />
+
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Write your request message"
+          rows="4"
+        />
+
+        <br />
+
+        <button onClick={sendRequest}>
+          Send Request
+        </button>
+      </div>
+
+      {/* SENT REQUESTS */}
+
+      <h2>My Sent Requests</h2>
+
+      {requests
+        .filter((request) => request.direction === 'sent')
+        .map((request) => (
+          <div className="request-card" key={request.id}>
+            <h3>{request.skillName}</h3>
 
             <p>
-              <strong>Request ID:</strong>{" "}
-              {request.id}
+              <strong>To:</strong> {request.mentorName}
+            </p>
+
+            <p>{request.message}</p>
+
+            <p>
+              <strong>Status:</strong>{' '}
+              <span className="status">
+                {request.status}
+              </span>
             </p>
 
             <p>
-              <strong>Learner ID:</strong>{" "}
-              {request.learnerId}
+              <strong>Requested on:</strong>{' '}
+              {request.date}
+            </p>
+          </div>
+        ))}
+
+      {/* RECEIVED REQUESTS */}
+
+      <h2>Received Requests</h2>
+
+      {requests
+        .filter((request) => request.direction === 'received')
+        .map((request) => (
+          <div className="request-card" key={request.id}>
+            <h3>{request.skillName}</h3>
+
+            <p>
+              <strong>From:</strong> {request.learnerName}
+            </p>
+
+            <p>{request.message}</p>
+
+            <p>
+              <strong>Status:</strong>{' '}
+              <span className="status">
+                {request.status}
+              </span>
             </p>
 
             <p>
-              <strong>Skill ID:</strong>{" "}
-              {request.skillId}
+              <strong>Requested on:</strong>{' '}
+              {request.date}
+            </p>
+
+            {request.status === 'pending' && (
+              <div>
+                <button
+                  onClick={() =>
+                    updateStatus(
+                      request.id,
+                      'accepted'
+                    )
+                  }
+                >
+                  Accept
+                </button>
+
+                <button
+                  onClick={() =>
+                    updateStatus(
+                      request.id,
+                      'rejected'
+                    )
+                  }
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+
+            {request.status === 'accepted' && (
+              <div className="session">
+                <h3>Schedule Session</h3>
+
+                <label>
+                  <strong>Date:</strong>
+                </label>
+
+                <br />
+
+                <input
+                  type="date"
+                  value={sessionDate}
+                  onChange={(e) =>
+                    setSessionDate(e.target.value)
+                  }
+                />
+
+                <br />
+                <br />
+
+                <label>
+                  <strong>Time:</strong>
+                </label>
+
+                <br />
+
+                <input
+                  type="time"
+                  value={sessionTime}
+                  onChange={(e) =>
+                    setSessionTime(e.target.value)
+                  }
+                />
+
+                <br />
+
+                <button
+                  onClick={() =>
+                    scheduleSession(request)
+                  }
+                >
+                  Schedule Session
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
+      {/* UPCOMING SESSIONS */}
+
+      <h2>Upcoming Sessions</h2>
+
+      {sessions
+        .filter(
+          (session) => session.status === 'scheduled'
+        )
+        .map((session) => (
+          <div className="request-card" key={session.id}>
+            <h3>{session.skillName}</h3>
+
+            <p>
+              <strong>Student:</strong>{' '}
+              {session.learnerName}
             </p>
 
             <p>
-              <strong>Message:</strong>{" "}
-              {request.message || "No message"}
+              <strong>Date:</strong> {session.date}
             </p>
 
             <p>
-              <strong>Status:</strong>{" "}
-              {request.status}
+              <strong>Time:</strong> {session.time}
+            </p>
+
+            <p>
+              <strong>Status:</strong>{' '}
+              <span className="status">
+                Scheduled
+              </span>
             </p>
 
             <button
               onClick={() =>
-                acceptRequest(request.id)
+                completeSession(session.id)
               }
-              style={{
-                marginRight: "10px",
-                padding: "8px 15px",
-                cursor: "pointer",
-              }}
             >
-              Accept
-            </button>
-
-            <button
-              onClick={() =>
-                rejectRequest(request.id)
-              }
-              style={{
-                padding: "8px 15px",
-                cursor: "pointer",
-              }}
-            >
-              Reject
+              Mark Session Completed
             </button>
           </div>
         ))}
+
+      {/* FEEDBACK */}
+
+      {sessions.some(
+        (session) => session.status === 'completed'
+      ) &&
+        !feedbackSubmitted && (
+          <div className="request-card">
+            <h2>Give Feedback</h2>
+
+            <label>
+              <strong>Rating:</strong>
+            </label>
+
+            <div className="star-rating">
+              <svg
+                width="0"
+                height="0"
+                style={{ position: 'absolute' }}
+              >
+                <defs>
+                  <linearGradient
+                    id="halfStar"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
+                    <stop
+                      offset="50%"
+                      stopColor="#f5b301"
+                    />
+                    <stop
+                      offset="50%"
+                      stopColor="#d1d5db"
+                    />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              {[1, 2, 3, 4, 5].map((star) => (
+                <svg
+                  key={star}
+                  className="rating-star"
+                  viewBox="0 0 24 24"
+                  onClick={(event) =>
+                    handleStarClick(event, star)
+                  }
+                >
+                  <polygon
+                    points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9"
+                    fill={getStarColor(star)}
+                  />
+                </svg>
+              ))}
+            </div>
+
+            <p className="rating-number">
+              {rating}/5
+            </p>
+
+            <label>
+              <strong>Comment:</strong>
+            </label>
+
+            <br />
+
+            <textarea
+              value={comment}
+              onChange={(e) =>
+                setComment(e.target.value)
+              }
+              placeholder="Write your feedback"
+              rows="4"
+            />
+
+            <br />
+
+            <button onClick={submitFeedback}>
+              Submit Feedback
+            </button>
+          </div>
+        )}
+
+      {feedbackSubmitted && (
+        <div className="request-card">
+          <h2>Feedback Submitted</h2>
+
+          <p>
+            <strong>Rating:</strong> {rating}/5
+          </p>
+
+          <p>
+            <strong>Comment:</strong> {comment}
+          </p>
+        </div>
+      )}
     </div>
-  );
+  )
 }
 
-export default Requests;
+export default Requests
